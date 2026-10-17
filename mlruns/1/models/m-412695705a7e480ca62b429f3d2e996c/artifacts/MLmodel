@@ -1,0 +1,24 @@
+artifact_path: file:C:/workspace/BITS/Third_sem/MLOps/Assignment/AIMLCZG523_Heart_Disease_Pipeline_2025AE05311/mlruns/1/models/m-412695705a7e480ca62b429f3d2e996c/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.13.14
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.9.1
+    skops_trusted_types:
+    - sklearn.tree._tree.Tree
+mlflow_version: 3.17.1
+model_id: m-412695705a7e480ca62b429f3d2e996c
+model_size_bytes: 113787
+model_uuid: m-412695705a7e480ca62b429f3d2e996c
+prompts: null
+run_id: 91a628b772a645af8c60b085e05ae8c8
+utc_time_created: '2026-10-17 15:54:38.671036'

@@ -3,13 +3,14 @@ import mlflow
 import mlflow.sklearn
 import joblib
 import os
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score, ConfusionMatrixDisplay, RocCurveDisplay
 
 def train_and_log():
     # Load the preprocessed dataset
@@ -76,6 +77,23 @@ def train_and_log():
                 mlflow.log_param(param_name, param_value)
                 
             mlflow.sklearn.log_model(best_pipeline, "model", skops_trusted_types=["sklearn.tree._tree.Tree"])
+            
+            # 1. Generate and log Confusion Matrix
+            fig_cm, ax_cm = plt.subplots()
+            ConfusionMatrixDisplay.from_estimator(best_pipeline, X_test, y_test, ax=ax_cm)
+            plt.title(f"Confusion Matrix - {model_name}")
+            fig_cm.savefig("confusion_matrix.png")
+            mlflow.log_artifact("confusion_matrix.png")
+            plt.close(fig_cm)
+
+            # 2. Generate and log ROC Curve
+            fig_roc, ax_roc = plt.subplots()
+            RocCurveDisplay.from_estimator(best_pipeline, X_test, y_test, ax=ax_roc)
+            plt.title(f"ROC Curve - {model_name}")
+            fig_roc.savefig("roc_curve.png")
+            mlflow.log_artifact("roc_curve.png")
+            plt.close(fig_roc)
+
             print(f"[{model_name}] Accuracy: {metrics['accuracy']:.4f} | ROC-AUC: {metrics['roc_auc']:.4f}")
             
             # Save the best reproducible model
