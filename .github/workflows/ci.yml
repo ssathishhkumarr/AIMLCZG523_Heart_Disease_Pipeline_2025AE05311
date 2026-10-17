@@ -38,7 +38,7 @@ jobs:
 
     - name: Run Unit Tests
       run: |
-        pytest tests/
+        PYTHONPATH=. pytest tests/
 
     - name: Upload model artifact
       uses: actions/upload-artifact@v4
