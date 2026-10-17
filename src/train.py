@@ -3,7 +3,7 @@ import mlflow
 import mlflow.sklearn
 import joblib
 import os
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
@@ -28,30 +28,38 @@ def train_and_log():
         ("cat", OneHotEncoder(handle_unknown="ignore"), categorical_features)
     ])
     
-    # Define models to train[cite: 1]
-    models = {
-        "Logistic_Regression": LogisticRegression(max_iter=1000),
-        "Random_Forest": RandomForestClassifier(n_estimators=100, random_state=42)
+    # Define models and their hyperparameter grids for GridSearchCV
+    models_and_params = {
+        "Logistic_Regression": {
+            "model": LogisticRegression(max_iter=1000),
+            "params": {"classifier__C": [0.1, 1.0, 10.0]}
+        },
+        "Random_Forest": {
+            "model": RandomForestClassifier(random_state=42),
+            "params": {"classifier__n_estimators": [50, 100], "classifier__max_depth": [None, 10]}
+        }
     }
     
     mlflow.set_experiment("Heart_Disease_Prediction")
     os.makedirs("models", exist_ok=True)
     
-    for model_name, model in models.items():
+    for model_name, mp in models_and_params.items():
         with mlflow.start_run(run_name=model_name):
-            # Create a full reproducible pipeline[cite: 1]
-            pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("classifier", model)])
+            # Create pipeline
+            pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("classifier", mp["model"])])
             
-            # Cross-validation[cite: 1]
-            cv_scores = cross_val_score(pipeline, X_train, y_train, cv=5, scoring='roc_auc')
-            mlflow.log_metric("cv_roc_auc_mean", cv_scores.mean())
+            # Perform Hyperparameter Tuning
+            grid_search = GridSearchCV(pipeline, mp["params"], cv=5, scoring='roc_auc')
+            grid_search.fit(X_train, y_train)
             
-            # Train and Predict
-            pipeline.fit(X_train, y_train)
-            y_pred = pipeline.predict(X_test)
-            y_proba = pipeline.predict_proba(X_test)[:, 1]
+            best_pipeline = grid_search.best_estimator_
+            mlflow.log_metric("cv_roc_auc_mean", grid_search.best_score_)
             
-            # Calculate required metrics[cite: 1]
+            # Predict using the best tuned model
+            y_pred = best_pipeline.predict(X_test)
+            y_proba = best_pipeline.predict_proba(X_test)[:, 1]
+            
+            # Calculate metrics
             metrics = {
                 "accuracy": accuracy_score(y_test, y_pred),
                 "precision": precision_score(y_test, y_pred),
@@ -59,15 +67,20 @@ def train_and_log():
                 "roc_auc": roc_auc_score(y_test, y_proba)
             }
             
-            # Track experiments with MLflow[cite: 1]
+            # Track experiments and best parameters with MLflow
             mlflow.log_metrics(metrics)
             mlflow.log_param("model_type", model_name)
-            mlflow.sklearn.log_model(pipeline, "model", skops_trusted_types=["sklearn.tree._tree.Tree"])
+            
+            # Log all optimized hyperparameters discovered by GridSearchCV
+            for param_name, param_value in grid_search.best_params_.items():
+                mlflow.log_param(param_name, param_value)
+                
+            mlflow.sklearn.log_model(best_pipeline, "model", skops_trusted_types=["sklearn.tree._tree.Tree"])
             print(f"[{model_name}] Accuracy: {metrics['accuracy']:.4f} | ROC-AUC: {metrics['roc_auc']:.4f}")
             
-            # Save the final reproducible model format for the API[cite: 1]
+            # Save the best reproducible model
             if model_name == "Random_Forest":
-                joblib.dump(pipeline, "models/model.pkl")
+                joblib.dump(best_pipeline, "models/model.pkl")
                 print("-> Random Forest packaged and saved to models/model.pkl")
 
 if __name__ == "__main__":

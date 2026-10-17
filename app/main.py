@@ -1,3 +1,4 @@
+from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
@@ -5,6 +6,7 @@ import pandas as pd
 
 # Initialize the FastAPI app
 app = FastAPI(title="Heart Disease Prediction API", description="API for predicting heart disease using a Random Forest model.")
+Instrumentator().instrument(app).expose(app)
 
 # Load the trained ML pipeline
 model = joblib.load("models/model.pkl")
