@@ -8,3 +8,5 @@ prometheus-fastapi-instrumentator
 matplotlib
 seaborn
 joblib
+httpx
+httpx2
